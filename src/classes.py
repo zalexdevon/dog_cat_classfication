@@ -1,21 +1,13 @@
 import os
 from Mylib import (
     myfuncs,
-    tf_layers,
-    tf_model_training_funcs,
-    tf_metrics,
     tf_create_object,
-    model_training_funcs,
     tf_model_evaluator_classes,
 )
 import tensorflow as tf
 import numpy as np
-import time
-import gc
-import pandas as pd
 from pathlib import Path
 from src import funcs, const
-from datetime import datetime
 
 
 class BestEpochResultSearcher(tf.keras.callbacks.Callback):
@@ -62,8 +54,6 @@ class ModelTrainer:
         self.scoring = scoring
 
     def train(self):
-        log_message = ""
-
         # Tạo thư mục lưu kết quả mô hình tốt nhất
         model_training_run_path = Path(
             f"{self.model_training_path}/{self.get_folder_name()}"
@@ -83,10 +73,6 @@ class ModelTrainer:
         )
 
         best_model_result_path = Path(f"{model_training_run_path}/best_result.pkl")
-
-        # Logging
-        log_message += f"Kết quả model tốt nhất lưu tại {model_training_run_path}\n"
-        log_message += f"Kết quả train từng model:\n"
 
         for i, param in enumerate(list_param):
             try:
@@ -128,9 +114,6 @@ class ModelTrainer:
                 training_result_text = f"{param}\n -> Val {self.scoring}: {val_scoring}, Train {self.scoring}: {train_scoring}, Best epoch: {best_epoch}\n"
                 print(training_result_text)
 
-                # Logging
-                log_message += training_result_text
-
                 # Cập nhật best model và lưu lại
                 val_scoring_find_best_model = (
                     val_scoring * sign_for_val_scoring_find_best_model
@@ -154,11 +137,6 @@ class ModelTrainer:
         best_model_result = myfuncs.load_python_object(best_model_result_path)
         best_model_result_text = f"Model tốt nhất\n{best_model_result[0]}\n -> Val {self.scoring}: {best_model_result[1]}, Train {self.scoring}: {best_model_result[2]}, Best epoch: {best_model_result[3]}\n"
         print(best_model_result_text)
-
-        # Logging
-        log_message += best_model_result_text
-
-        return log_message
 
     def create_callbacks(self, param, sign_for_val_scoring_find_best_model):
         earlystopping = tf.keras.callbacks.EarlyStopping(
@@ -291,8 +269,6 @@ class ModelEvalutor:
         self.model_evaluation_on_val_path = model_evaluation_on_val_path
 
     def next(self):
-        log_message = ""
-
         # Đánh giá
         model_result_text = "===============Kết quả đánh giá model==================\n"
 
@@ -319,11 +295,6 @@ class ModelEvalutor:
             Path(f"{self.model_evaluation_on_val_path}/result.txt"), mode="w"
         ) as file:
             file.write(model_result_text)
-
-        # Logging
-        log_message += model_result_text
-
-        return log_message
 
 
 class ModelTrainingResultGatherer:
@@ -361,64 +332,3 @@ class ModelTrainingResultGatherer:
             list_result.append(result)
 
         return list_result
-
-
-class LoggingDisplayer:
-    DATE_FORMAT = "%d-%m-%Y-%H-%M-%S"
-    READ_FOLDER_NAME = "artifacts/logs"
-    WRITE_FOLDER_NAME = "artifacts/gather_logs"
-
-    # Tạo thư mục
-    os.makedirs(WRITE_FOLDER_NAME, exist_ok=True)
-
-    def __init__(self, mode, file_name=None, start_time=None, end_time=None):
-        self.mode = mode
-        self.file_name = file_name
-        self.start_time = start_time
-        self.end_time = end_time
-
-        if self.file_name is None:
-            self.file_name = f"{datetime.now().strftime(self.DATE_FORMAT)}.log"
-
-    def print_and_save(self):
-        file_path = f"{self.WRITE_FOLDER_NAME}/{self.file_name}"
-
-        if self.mode == "all":
-            result = self.gather_all_logging_result()
-        else:
-            result = self.gather_logging_result_from_start_to_end_time()
-
-        print(result)
-        print(f"Lưu result tại {file_path}")
-        myfuncs.write_content_to_file(result, file_path)
-
-    def gather_all_logging_result(self):
-        logs_filenames = self.get_logs_filenames()
-
-        return self.read_from_logs_filenames(logs_filenames)
-
-    def gather_logging_result_from_start_to_end_time(self):
-        logs_filenames = pd.Series(self.get_logs_filenames())
-        logs_filenames = logs_filenames[
-            (logs_filenames > self.start_time) & (logs_filenames < self.end_time)
-        ].tolist()
-
-        return self.read_from_logs_filenames(logs_filenames)
-
-    def read_from_logs_filenames(self, logs_filenames):
-        result = ""
-        for logs_filename in logs_filenames:
-            logs_filepath = f"{self.READ_FOLDER_NAME}/{logs_filename}.log"
-            content = myfuncs.read_content_from_file(logs_filepath)
-            result += f"{content}\n\n"
-
-        return result
-
-    def get_logs_filenames(self):
-        logs_filenames = os.listdir(self.READ_FOLDER_NAME)
-        date_format_in_filename = f"{self.DATE_FORMAT}.log"
-        logs_filenames = [
-            datetime.strptime(item, date_format_in_filename) for item in logs_filenames
-        ]
-        logs_filenames = sorted(logs_filenames)  # Sắp xếp theo thời gian tăng dần
-        return logs_filenames

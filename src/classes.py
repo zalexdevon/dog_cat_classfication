@@ -55,13 +55,11 @@ class ModelTrainer:
 
     def train(self):
         # Tạo thư mục lưu kết quả mô hình tốt nhất
+        list_param = self.get_list_param()
         model_training_run_path = Path(
             f"{self.model_training_path}/{self.get_folder_name()}"
         )
         myfuncs.create_directories([model_training_run_path])
-
-        # Get list_param và lưu lại
-        list_param = self.get_list_param()
         myfuncs.save_python_object(
             Path(f"{model_training_run_path}/list_param.pkl"), list_param
         )

@@ -8,6 +8,7 @@ import tensorflow as tf
 import numpy as np
 from pathlib import Path
 from src import funcs, const
+from multiprocessing import Process, Queue
 
 
 class BestEpochResultSearcher(tf.keras.callbacks.Callback):
@@ -65,7 +66,8 @@ class ModelTrainer:
         )
 
         # Get các tham số cần thiết khác
-        best_val_scoring = -np.inf
+        best_val_scoring_path = Path(f"{model_training_run_path}/best_val_scoring.pkl")
+        myfuncs.save_python_object(best_val_scoring_path, -np.inf)
         sign_for_val_scoring_find_best_model = (
             self.get_sign_for_val_scoring_to_find_best_model()
         )
@@ -73,68 +75,94 @@ class ModelTrainer:
         best_model_result_path = Path(f"{model_training_run_path}/best_result.pkl")
 
         for i, param in enumerate(list_param):
-            try:
-                # tạo train_ds, và val_ds
-                train_ds, val_ds = funcs.create_train_val_ds(param)
-
-                # Tạo callbacks
-                callbacks = self.create_callbacks(
-                    param, sign_for_val_scoring_find_best_model
-                )
-
-                # tạo optimizer
-                optimizer = tf_create_object.ObjectCreatorFromDict(
-                    param, "optimizer"
-                ).next()
-
-                # tạo model
-                model = funcs.create_model(param)
-
-                # compile model
-                model.compile(
-                    optimizer=optimizer,
-                    loss=param["loss"],
-                    metrics=funcs.get_metrics(self.scoring),
-                )
-
-                # trian model với callbacks
-                print(f"Train model {i} / {self.num_models}")
-                model.fit(
-                    train_ds,
-                    epochs=param["epochs"],
-                    verbose=1,
-                    validation_data=val_ds,
-                    callbacks=callbacks,
-                )
-
-                # in kết quả
-                val_scoring, train_scoring, best_epoch = callbacks[1].best_result
-                training_result_text = f"{param}\n -> Val {self.scoring}: {val_scoring}, Train {self.scoring}: {train_scoring}, Best epoch: {best_epoch}\n"
-                print(training_result_text)
-
-                # Cập nhật best model và lưu lại
-                val_scoring_find_best_model = (
-                    val_scoring * sign_for_val_scoring_find_best_model
-                )
-
-                if best_val_scoring < val_scoring_find_best_model:
-                    best_val_scoring = val_scoring_find_best_model
-
-                    # Lưu kết quả
-                    myfuncs.save_python_object(
-                        best_model_result_path,
-                        (param, val_scoring, train_scoring, best_epoch),
-                    )
-
-                # Giải phóng bộ nhớ model
-            except:
-                # Nếu có exception thì bỏ qua vòng lặp đi
-                continue
+            print(f"Train model {i} / {self.num_models}")
+            print(f"Param: {param}")
+            p = Process(
+                target=self.train_model,
+                args=(
+                    param,
+                    sign_for_val_scoring_find_best_model,
+                    best_model_result_path,
+                    best_val_scoring_path,
+                ),
+            )
+            p.start()
+            p.join()
 
         # In ra kết quả của model tốt nhất
         best_model_result = myfuncs.load_python_object(best_model_result_path)
-        best_model_result_text = f"Model tốt nhất\n{best_model_result[0]}\n -> Val {self.scoring}: {best_model_result[1]}, Train {self.scoring}: {best_model_result[2]}, Best epoch: {best_model_result[3]}\n"
-        print(best_model_result_text)
+        print(
+            f"Model tốt nhất\nParam: {best_model_result[0]}\nVal {self.scoring}: {best_model_result[1]}, Train {self.scoring}: {best_model_result[2]}, Best epoch: {best_model_result[3]}\n"
+        )
+
+    def train_model(
+        self,
+        param,
+        sign_for_val_scoring_find_best_model,
+        best_model_result_path,
+        best_val_scoring_path,
+    ):
+        try:
+            # tạo train_ds, và val_ds
+            train_ds, val_ds = funcs.create_train_val_ds(param)
+
+            # Tạo callbacks
+            callbacks = self.create_callbacks(
+                param, sign_for_val_scoring_find_best_model
+            )
+
+            # tạo optimizer
+            optimizer = tf_create_object.ObjectCreatorFromDict(
+                param, "optimizer"
+            ).next()
+
+            # tạo model
+            model = funcs.create_model(param)
+
+            # compile model
+            model.compile(
+                optimizer=optimizer,
+                loss=param["loss"],
+                metrics=funcs.get_metrics(self.scoring),
+            )
+
+            # trian model với callbacks
+            model.fit(
+                train_ds,
+                epochs=param["epochs"],
+                verbose=1,
+                validation_data=val_ds,
+                callbacks=callbacks,
+            )
+
+            # in kết quả
+            val_scoring, train_scoring, best_epoch = callbacks[1].best_result
+            print(
+                f"Val {self.scoring}: {val_scoring}, Train {self.scoring}: {train_scoring}, Best epoch: {best_epoch}\n"
+            )
+
+            # Cập nhật best model và lưu lại
+            val_scoring_find_best_model = (
+                val_scoring * sign_for_val_scoring_find_best_model
+            )
+
+            best_val_scoring = myfuncs.load_python_object(best_val_scoring_path)
+
+            if best_val_scoring < val_scoring_find_best_model:
+                myfuncs.save_python_object(
+                    best_val_scoring_path, val_scoring_find_best_model
+                )
+
+                # Lưu kết quả
+                myfuncs.save_python_object(
+                    best_model_result_path,
+                    (param, val_scoring, train_scoring, best_epoch),
+                )
+
+            # Giải phóng bộ nhớ model
+        except:
+            # Nếu có exception thì bỏ qua vòng lặp đi
+            print("Lỗi")
 
     def create_callbacks(self, param, sign_for_val_scoring_find_best_model):
         earlystopping = tf.keras.callbacks.EarlyStopping(

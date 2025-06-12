@@ -114,7 +114,7 @@ def get_reverse_param_in_sorted(scoring):
 
 
 def get_output_layer_for_classification(num_classes=None):
-    if len(num_classes) == 2:
+    if num_classes == 2:
         return tf.keras.layers.Dense(1, activation="sigmoid")
 
     # Phân loại nhiều class

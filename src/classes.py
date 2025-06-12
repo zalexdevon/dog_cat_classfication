@@ -9,6 +9,7 @@ import numpy as np
 from pathlib import Path
 from src import funcs, const
 from multiprocessing import Process, Queue
+import traceback
 
 
 class BestEpochResultSearcher(tf.keras.callbacks.Callback):
@@ -160,7 +161,11 @@ class ModelTrainer:
                 )
 
             # Giải phóng bộ nhớ model
-        except:
+        except Exception as e:
+            # TODO: d
+            print(f"Error: {e}")
+            traceback.print_exc()
+            # d
             # Nếu có exception thì bỏ qua vòng lặp đi
             print("Lỗi")
 

@@ -68,6 +68,7 @@ class ModelTrainer:
             Path(f"{model_training_run_path}/list_param.pkl"), list_param
         )
 
+        print("move_part_of_train_val_data_out")
         self.move_part_of_train_val_data_out(list_param)
 
         # Get các tham số cần thiết khác
@@ -103,6 +104,7 @@ class ModelTrainer:
             f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}"
         )
 
+        print("move_train_val_data_back")
         self.move_train_val_data_back(list_param)
 
     def get_list_train_val_path(self, list_param):

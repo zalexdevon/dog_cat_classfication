@@ -43,26 +43,6 @@ def move_part_of_data_to_another_place(train_path, train_out_path, out_size):
         shutil.move(train_path / file, train_out_path / file)
 
 
-def move_part_of_train_val_out(param):
-    out_size = 1 - param["data_size"]
-
-    train_path = param["train_val_path"] / "train"
-    val_path = param["train_val_path"] / "val"
-    train_out_path = param["train_val_path"] / "train_out"
-    val_out_path = param["train_val_path"] / "val_out"
-
-    for class_name in param["class_names"]:
-        move_part_of_data_to_another_place(
-            train_path / class_name, train_out_path / class_name, out_size
-        )
-    for class_name in param["class_names"]:
-        move_part_of_data_to_another_place(
-            val_path / class_name, val_out_path / class_name, out_size
-        )
-
-    return train_out_path, val_out_path
-
-
 def move_part_of_train_val_back(param, train_out_path, val_out_path):
     train_path = param["train_val_path"] / "train"
     val_path = param["train_val_path"] / "val"

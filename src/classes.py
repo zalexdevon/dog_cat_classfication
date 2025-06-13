@@ -10,6 +10,8 @@ from pathlib import Path
 from src import funcs, const
 from multiprocessing import Process, Queue
 import traceback
+import random
+import shutil
 
 
 class BestEpochResultSearcher(tf.keras.callbacks.Callback):
@@ -66,6 +68,8 @@ class ModelTrainer:
             Path(f"{model_training_run_path}/list_param.pkl"), list_param
         )
 
+        self.move_part_of_train_val_data_out(list_param)
+
         # Get các tham số cần thiết khác
         best_val_scoring_path = Path(f"{model_training_run_path}/best_val_scoring.pkl")
         myfuncs.save_python_object(best_val_scoring_path, -np.inf)
@@ -97,6 +101,62 @@ class ModelTrainer:
         print(
             f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}"
         )
+
+        self.move_train_val_data_back(list_param)
+
+    def get_list_train_val_path(self, list_param):
+        train_val_path = list_param[0]["train_val_path"]
+        class_names = list_param[0]["class_names"]
+
+        list_train_path = [train_val_path / "train" / item for item in class_names]
+        list_train_out_path = [
+            train_val_path / "train_out" / item for item in class_names
+        ]
+        list_val_path = [train_val_path / "val" / item for item in class_names]
+        list_val_out_path = [train_val_path / "val_out" / item for item in class_names]
+
+        return list_train_path, list_train_out_path, list_val_path, list_val_out_path
+
+    def move_train_val_data_back(self, list_param):
+        list_train_path, list_train_out_path, list_val_path, list_val_out_path = (
+            self.get_list_train_val_path(list_param)
+        )
+
+        self.move_part_of_data_to_another_place_for_many_folders(
+            list_train_out_path, list_train_path, 1.0
+        )
+        self.move_part_of_data_to_another_place_for_many_folders(
+            list_val_out_path, list_val_path, 1.0
+        )
+
+    def move_part_of_train_val_data_out(self, list_param):
+        out_size = 1 - list_param[0]["data_size"]
+        list_train_path, list_train_out_path, list_val_path, list_val_out_path = (
+            self.get_list_train_val_path(list_param)
+        )
+        self.move_part_of_data_to_another_place_for_many_folders(
+            list_train_path, list_train_out_path, out_size
+        )
+        self.move_part_of_data_to_another_place_for_many_folders(
+            list_val_path, list_val_out_path, out_size
+        )
+
+    def move_part_of_data_to_another_place_for_1_folder(
+        self, src_path, dest_path, out_size
+    ):
+        filenames = os.listdir(src_path)
+        out_filenames = random.sample(filenames, k=int(out_size * len(filenames)))
+
+        for file in out_filenames:
+            shutil.move(src_path / file, dest_path / file)
+
+    def move_part_of_data_to_another_place_for_many_folders(
+        self, list_train_path, list_train_out_path, out_size
+    ):
+        for train_path, train_out_path in zip(list_train_path, list_train_out_path):
+            self.move_part_of_data_to_another_place_for_1_folder(
+                train_path, train_out_path, out_size
+            )
 
     def train_model(
         self,
@@ -237,6 +297,7 @@ class ModelTrainer:
 
 
 class ModelRetrainer:
+
     def __init__(self, best_param, train_ds, best_epoch, scoring, loss):
         self.best_param = best_param
         self.train_ds = train_ds

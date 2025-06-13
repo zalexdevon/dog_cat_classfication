@@ -329,3 +329,22 @@ class ModelEvalutor:
             Path(f"{self.model_evaluation_on_val_path}/result.txt"), mode="w"
         ) as file:
             file.write(model_result_text)
+
+
+class ParamDictFixer:
+    def __init__(self, param_dict):
+        self.param_dict = param_dict
+
+    def next(self):
+        keys = list(self.param_dict.keys())
+        values = list(self.param_dict.values())
+
+        values = [item if isinstance(item, list) else [item] for item in values]
+
+        values = [self.fix_value(item) for item in values]
+
+        return dict(zip(keys, values))
+
+    def fix_value(self, value):
+        value = [tuple(item) if isinstance(item, list) else item for item in value]
+        return value

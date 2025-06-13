@@ -92,8 +92,10 @@ class ModelTrainer:
 
         # In ra kết quả của model tốt nhất
         best_model_result = myfuncs.load_python_object(best_model_result_path)
+        print("Model tốt nhất")
+        print(f"Param: {best_model_result[0]}")
         print(
-            f"Model tốt nhất\nParam: {best_model_result[0]}\nVal {self.scoring}: {best_model_result[1]}, Train {self.scoring}: {best_model_result[2]}, Best epoch: {best_model_result[3]}\n"
+            f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}"
         )
 
     def train_model(
@@ -139,7 +141,7 @@ class ModelTrainer:
             # in kết quả
             val_scoring, train_scoring, best_epoch = callbacks[1].best_result
             print(
-                f"Val {self.scoring}: {val_scoring}, Train {self.scoring}: {train_scoring}, Best epoch: {best_epoch}\n"
+                f"Val scoring: {val_scoring}, Train scoring: {train_scoring}, Best epoch: {best_epoch}"
             )
 
             # Cập nhật best model và lưu lại
@@ -162,12 +164,9 @@ class ModelTrainer:
 
             # Giải phóng bộ nhớ model
         except Exception as e:
-            # TODO: d
-            print(f"Error: {e}")
-            traceback.print_exc()
-            # d
             # Nếu có exception thì bỏ qua vòng lặp đi
-            print("Lỗi")
+            print(f"Lỗi: {e}")
+            traceback.print_exc()
 
     def create_callbacks(self, param, sign_for_val_scoring_find_best_model):
         earlystopping = tf.keras.callbacks.EarlyStopping(
@@ -326,40 +325,3 @@ class ModelEvalutor:
             Path(f"{self.model_evaluation_on_val_path}/result.txt"), mode="w"
         ) as file:
             file.write(model_result_text)
-
-
-class ModelTrainingResultGatherer:
-    MODEL_TRAINING_FOLDER_PATH = "artifacts/model_training"
-
-    def __init__(self, scoring):
-        self.scoring = scoring
-        pass
-
-    def next(self):
-        model_training_paths = [
-            f"{self.MODEL_TRAINING_FOLDER_PATH}/{item}"
-            for item in os.listdir(self.MODEL_TRAINING_FOLDER_PATH)
-        ]
-
-        result = []
-        for folder_path in model_training_paths:
-            result += self.get_result_from_1folder(folder_path)
-
-        # Sort theo val_scoring (ở vị trí thứ 1)
-        result = sorted(
-            result,
-            key=lambda item: item[1],
-            reverse=funcs.get_reverse_param_in_sorted(self.scoring),
-        )
-        return result
-
-    def get_result_from_1folder(self, folder_path):
-        run_folder_names = funcs.get_run_folders(folder_path)
-        run_folder_paths = [f"{folder_path}/{item}" for item in run_folder_names]
-
-        list_result = []
-        for folder_path in run_folder_paths:
-            result = myfuncs.load_python_object(f"{folder_path}/result.pkl")
-            list_result.append(result)
-
-        return list_result

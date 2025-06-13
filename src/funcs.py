@@ -68,7 +68,7 @@ def create_model(param):
     data_augmentation_layer = tf_create_object.ObjectCreatorFromDict(
         param, "layer0"
     ).next()
-    rescaling_layer = tf.keras.layers.Rescaling(1.0 / 255)
+    rescaling_layer = tf.keras.layers.Rescaling(param["max_value"])
     conv2D_layer = tf_create_object.ObjectCreatorFromDict(param, "layer1").next()
     flatten_layer = tf_create_object.ObjectCreatorFromDict(param, "layer2").next()
     dense_layer = tf_create_object.ObjectCreatorFromDict(param, "layer3").next()
@@ -97,8 +97,8 @@ def get_metrics(scoring):
     if scoring in const.BUILT_IN_METRICS:
         return [scoring]
 
-    if scoring == "bleu":
-        return [tf_metrics.BleuScoreCustomMetric()]
+    if scoring == "roc_auc":
+        return [tf.keras.metrics.AUC()]
 
     raise ValueError(f"Chưa định nghĩa cho {scoring}")
 
@@ -113,7 +113,7 @@ def get_reverse_param_in_sorted(scoring):
     raise ValueError(f"Chưa định nghĩa cho {scoring}")
 
 
-def get_output_layer_for_classification(num_classes=None):
+def get_output_layer_for_classification(num_classes):
     if num_classes == 2:
         return tf.keras.layers.Dense(1, activation="sigmoid")
 

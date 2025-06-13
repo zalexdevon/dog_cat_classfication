@@ -35,31 +35,7 @@ def create_train_test_ds(param, test_data_path):
     return train_ds, test_ds
 
 
-def move_part_of_data_to_another_place(train_path, train_out_path, out_size):
-    filenames = os.listdir(train_path)
-    out_filenames = random.sample(filenames, k=int(out_size * len(filenames)))
-
-    for file in out_filenames:
-        shutil.move(train_path / file, train_out_path / file)
-
-
-def move_part_of_train_val_back(param, train_out_path, val_out_path):
-    train_path = param["train_val_path"] / "train"
-    val_path = param["train_val_path"] / "val"
-
-    for class_name in param["class_names"]:
-        move_part_of_data_to_another_place(
-            train_out_path / class_name, train_path / class_name, 1.0
-        )
-    for class_name in param["class_names"]:
-        move_part_of_data_to_another_place(
-            val_out_path / class_name, val_path / class_name, 1.0
-        )
-
-
 def create_train_val_ds(param):
-    train_out_path, val_out_path = move_part_of_train_val_out(param)
-
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
         Path(f"{param['train_val_path']}/train"),
         shuffle=True,
@@ -79,8 +55,6 @@ def create_train_val_ds(param):
     # Cache và prefetch dataset
     train_ds = tf_myfuncs.cache_prefetch_tfdataset(train_ds)
     val_ds = tf_myfuncs.cache_prefetch_tfdataset(val_ds)
-
-    move_part_of_train_val_back(param, train_out_path, val_out_path)
 
     return train_ds, val_ds
 

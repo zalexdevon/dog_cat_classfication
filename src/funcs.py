@@ -51,8 +51,14 @@ def move_part_of_train_val_out(param):
     train_out_path = param["train_val_path"] / "train_out"
     val_out_path = param["train_val_path"] / "val_out"
 
-    move_part_of_data_to_another_place(train_path, train_out_path, out_size)
-    move_part_of_data_to_another_place(val_path, val_out_path, out_size)
+    for class_name in param["class_names"]:
+        move_part_of_data_to_another_place(
+            train_path / class_name, train_out_path / class_name, out_size
+        )
+    for class_name in param["class_names"]:
+        move_part_of_data_to_another_place(
+            val_path / class_name, val_out_path / class_name, out_size
+        )
 
     return train_out_path, val_out_path
 
@@ -61,8 +67,14 @@ def move_part_of_train_val_back(param, train_out_path, val_out_path):
     train_path = param["train_val_path"] / "train"
     val_path = param["train_val_path"] / "val"
 
-    move_part_of_data_to_another_place(train_out_path, train_path, 1.0)
-    move_part_of_data_to_another_place(val_out_path, val_path, 1.0)
+    for class_name in param["class_names"]:
+        move_part_of_data_to_another_place(
+            train_out_path / class_name, train_path / class_name, 1.0
+        )
+    for class_name in param["class_names"]:
+        move_part_of_data_to_another_place(
+            val_out_path / class_name, val_path / class_name, 1.0
+        )
 
 
 def create_train_val_ds(param):

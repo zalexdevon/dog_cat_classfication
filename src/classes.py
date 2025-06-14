@@ -46,6 +46,49 @@ class BestEpochResultSearcher(tf.keras.callbacks.Callback):
         )
 
 
+class BestEpochResultSearcherWithModelSaving(tf.keras.callbacks.Callback):
+    def __init__(
+        self,
+        sign_for_val_scoring_find_best_model,
+        scoring,
+    ):
+        super().__init__()
+        self.sign_for_val_scoring_find_best_model = sign_for_val_scoring_find_best_model
+        self.scoring = scoring
+
+    def on_train_begin(self, logs=None):
+        self.train_scorings = []
+        self.val_scorings = []
+        self.model_weights = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.train_scorings.append(
+            logs.get(self.scoring) * self.sign_for_val_scoring_find_best_model
+        )
+        self.val_scorings.append(
+            logs.get(f"val_{self.scoring}") * self.sign_for_val_scoring_find_best_model
+        )
+        self.model_weights.append(self.model.get_weights())
+
+    def on_train_end(self, logs=None):
+        # Tìm model ứng với val scoring tốt nhất
+        index_best_model = np.argmax(self.val_scorings)
+        best_model_val_scoring = np.abs(self.val_scorings[index_best_model])
+        best_model_train_scoring = np.abs(self.train_scorings[index_best_model])
+
+        best_weights = self.model_weights[index_best_model]
+        self.model.set_weights(best_weights)
+
+        best_epoch = index_best_model + 1
+
+        self.best_result = (
+            best_model_val_scoring,
+            best_model_train_scoring,
+            best_epoch,
+            self.model,
+        )
+
+
 class ModelTrainer:
     def __init__(
         self,
@@ -59,9 +102,9 @@ class ModelTrainer:
 
     def train(self):
         # Tạo thư mục lưu kết quả mô hình tốt nhất
-        list_param = self.get_list_param()
+        list_param = funcs.get_list_param(self.model_training_path, self.num_models)
         model_training_run_path = Path(
-            f"{self.model_training_path}/{self.get_folder_name()}"
+            f"{self.model_training_path}/{funcs.get_folder_name(self.model_training_path)}"
         )
         myfuncs.create_directories([model_training_run_path])
         myfuncs.save_python_object(
@@ -72,7 +115,7 @@ class ModelTrainer:
         best_val_scoring_path = Path(f"{model_training_run_path}/best_val_scoring.pkl")
         myfuncs.save_python_object(best_val_scoring_path, -np.inf)
         sign_for_val_scoring_find_best_model = (
-            self.get_sign_for_val_scoring_to_find_best_model()
+            funcs.get_sign_for_val_scoring_to_find_best_model(self.scoring)
         )
 
         best_model_result_path = Path(f"{model_training_run_path}/best_result.pkl")
@@ -176,7 +219,7 @@ class ModelTrainer:
             monitor=f"val_{self.scoring}",
             patience=param["patience"],
             min_delta=param["min_delta"],
-            mode=self.get_mode_for_EarlyStopping(),
+            mode=funcs.get_mode_for_EarlyStopping(self.scoring),
         )
         model_checkpoint = BestEpochResultSearcher(
             sign_for_val_scoring_find_best_model, self.scoring
@@ -184,63 +227,148 @@ class ModelTrainer:
 
         return [earlystopping, model_checkpoint]
 
-    def get_mode_for_EarlyStopping(self):
-        if self.scoring in const.SCORINGS_PREFER_MAXIMUM:
-            return "max"
 
-        if self.scoring in const.SCORINGS_PREFER_MININUM:
-            return "min"
+class ModelTrainerWithModelSaving:
+    def __init__(
+        self,
+        model_training_path,
+        num_models,
+        scoring,
+    ):
+        self.model_training_path = model_training_path
+        self.num_models = num_models
+        self.scoring = scoring
 
-        raise ValueError(f"Chưa định nghĩa cho {self.scoring}")
-
-    def get_list_param(self):
-        # Get full_list_param
-        param_dict = myfuncs.load_python_object(
-            self.model_training_path / "param_dict.pkl"
+    def train(self):
+        # Tạo thư mục lưu kết quả mô hình tốt nhất
+        list_param = funcs.get_list_param(self.model_training_path, self.num_models)
+        model_training_run_path = Path(
+            f"{self.model_training_path}/{funcs.get_folder_name(self.model_training_path)}"
         )
-        full_list_param = myfuncs.get_full_list_dict(param_dict)
+        myfuncs.create_directories([model_training_run_path])
+        myfuncs.save_python_object(
+            Path(f"{model_training_run_path}/list_param.pkl"), list_param
+        )
 
-        # Get folder của run
-        run_folders = funcs.get_run_folders(self.model_training_path)
+        # Get các tham số cần thiết khác
+        best_val_scoring_path = Path(f"{model_training_run_path}/best_val_scoring.pkl")
+        myfuncs.save_python_object(best_val_scoring_path, -np.inf)
+        sign_for_val_scoring_find_best_model = (
+            funcs.get_sign_for_val_scoring_to_find_best_model(self.scoring)
+        )
 
-        if len(run_folders) > 0:
-            # Get list param còn lại
-            for run_folder in run_folders:
-                list_param = myfuncs.load_python_object(
-                    Path(f"{self.model_training_path}/{run_folder}/list_param.pkl")
+        best_model_result_path = Path(f"{model_training_run_path}/best_result.pkl")
+        best_model_path = Path(f"{model_training_run_path}/best_model.keras")
+        myfuncs.save_python_object(best_model_result_path, -np.inf)
+
+        for i, param in enumerate(list_param):
+            print(f"Train model {i} / {self.num_models}")
+            print(f"Param: {param}")
+            p = Process(
+                target=self.train_model,
+                args=(
+                    param,
+                    sign_for_val_scoring_find_best_model,
+                    best_model_result_path,
+                    best_model_path,
+                    best_val_scoring_path,
+                ),
+            )
+            p.start()
+            p.join()
+
+        # In ra kết quả của model tốt nhất
+        best_model_result = myfuncs.load_python_object(best_model_result_path)
+        print("Model tốt nhất")
+        print(f"Param: {best_model_result[0]}")
+        print(
+            f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}"
+        )
+
+    def train_model(
+        self,
+        param,
+        sign_for_val_scoring_find_best_model,
+        best_model_result_path,
+        best_model_path,
+        best_val_scoring_path,
+    ):
+        try:
+            # tạo train_ds, và val_ds
+            train_ds, val_ds = funcs.create_train_val_ds(param)
+
+            # Tạo callbacks
+            callbacks = self.create_callbacks(
+                param,
+                sign_for_val_scoring_find_best_model,
+            )
+
+            # tạo optimizer
+            optimizer = tf_create_object.ObjectCreatorFromDict(
+                param, "optimizer"
+            ).next()
+
+            # tạo model
+            model = funcs.create_model(param)
+
+            # compile model
+            model.compile(
+                optimizer=optimizer,
+                loss=param["loss"],
+                metrics=funcs.get_metrics(self.scoring),
+            )
+
+            # trian model với callbacks
+            model.fit(
+                train_ds,
+                epochs=param["epochs"],
+                verbose=1,
+                validation_data=val_ds,
+                callbacks=callbacks,
+            )
+
+            # in kết quả
+            val_scoring, train_scoring, best_epoch, model = callbacks[1].best_result
+            print(
+                f"Val scoring: {val_scoring}, Train scoring: {train_scoring}, Best epoch: {best_epoch}"
+            )
+
+            # Cập nhật model tốt nhất
+            val_scoring_to_find_best_model = (
+                val_scoring * sign_for_val_scoring_find_best_model
+            )
+            best_val_scoring = myfuncs.load_python_object(best_val_scoring_path)
+
+            if val_scoring_to_find_best_model > best_val_scoring:
+                myfuncs.save_python_object(
+                    best_val_scoring_path, val_scoring_to_find_best_model
                 )
-                full_list_param = myfuncs.subtract_2list_set(
-                    full_list_param, list_param
+                myfuncs.save_python_object(
+                    best_model_result_path,
+                    (param, val_scoring, train_scoring, best_epoch),
                 )
+                model.save(best_model_path)
 
-        # Random list
-        return myfuncs.randomize_list(full_list_param, self.num_models)
+        except Exception as e:
+            # Nếu có exception thì bỏ qua vòng lặp đi
+            print(f"Lỗi: {e}")
+            traceback.print_exc()
 
-    def get_folder_name(self):
-        # Get các folder lưu model tốt nhất
-        run_folders = funcs.get_run_folders(self.model_training_path)
+    def create_callbacks(self, param, sign_for_val_scoring_find_best_model):
+        earlystopping = tf.keras.callbacks.EarlyStopping(
+            monitor=f"val_{self.scoring}",
+            patience=param["patience"],
+            min_delta=param["min_delta"],
+            mode=funcs.get_mode_for_EarlyStopping(self.scoring),
+        )
+        model_checkpoint = BestEpochResultSearcherWithModelSaving(
+            sign_for_val_scoring_find_best_model, self.scoring
+        )
 
-        if len(run_folders) == 0:  # Lần đầu tiên chạy thì là run0
-            return "run0"
-
-        number_in_run_folders = run_folders.str.extract(r"(\d+)").astype("int")[
-            0
-        ]  # Các con số trong run0, run1, ... (0, 1, )
-        folder_name = f"run{number_in_run_folders.max() +1}"  # Tên folder sẽ là số lớn nhất để prevent trùng
-        return folder_name
-
-    def get_sign_for_val_scoring_to_find_best_model(self):
-        if self.scoring in const.SCORINGS_PREFER_MININUM:
-            return -1
-
-        if self.scoring in const.SCORINGS_PREFER_MAXIMUM:
-            return 1
-
-        raise ValueError(f"Chưa định nghĩa cho {self.scoring}")
+        return [earlystopping, model_checkpoint]
 
 
 class ModelRetrainer:
-
     def __init__(self, best_param, train_ds, best_epoch, scoring, loss):
         self.best_param = best_param
         self.train_ds = train_ds
@@ -293,6 +421,36 @@ class BestResultSearcher:
             reverse=funcs.get_reverse_param_in_sorted(self.scoring),
         )  # Sort theo val scoring
         return list_result[0]
+
+
+class BestResultAndModelSearcher:
+    def __init__(self, model_training_path, scoring):
+        self.model_training_path = model_training_path
+        self.scoring = scoring
+
+    def next(self):
+        run_folders = funcs.get_run_folders(self.model_training_path)
+        list_result = []
+
+        for run_folder in run_folders:
+            best_result = myfuncs.load_python_object(
+                self.model_training_path / run_folder / "best_result.pkl"
+            )
+            val_scoring = best_result[1]
+            list_result.append((val_scoring, run_folder))
+
+        list_result = sorted(
+            list_result,
+            key=lambda item: item[0],
+            reverse=funcs.get_reverse_param_in_sorted(self.scoring),
+        )
+        best_run_folder_path = self.model_training_path / list_result[0][1]
+        best_result = myfuncs.load_python_object(
+            best_run_folder_path / "best_result.pkl"
+        )
+        best_model = myfuncs.load_python_object(best_run_folder_path / "best_model.pkl")
+
+        return best_result, best_model
 
 
 class ModelEvalutor:

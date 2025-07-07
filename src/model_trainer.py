@@ -98,13 +98,13 @@ def train_model(
             metrics=["accuracy"],
         )
 
-        model.fit(
+        history = model.fit(
             x=train_ds,
             epochs=epochs,
             verbose=1,
             validation_data=val_ds,
             callbacks=callbacks,
-        )
+        ).history
 
         val_scoring, train_scoring, best_epoch, training_time = callbacks[1].best_result
         print(
@@ -116,7 +116,7 @@ def train_model(
             myfuncs.save_python_object(best_val_scoring_path, val_scoring)
             myfuncs.save_python_object(
                 best_model_result_path,
-                (param, val_scoring, train_scoring, best_epoch),
+                (param, val_scoring, train_scoring, best_epoch, training_time, history),
             )
 
     except Exception as e:

@@ -1,21 +1,19 @@
-from src.create_model import create_model
+from src import create_model
+from src import create_object
 
 
 def retrain(param, train_ds, epoch, loss):
-    # Tạo model
-    model = create_model(param)
+    model = create_model.create_model(param)
 
-    # compile
-    optimizer = create_model(param, "optimizer")
+    optimizer = create_object.create_object(param, "optimizer")
     model.compile(
         optimizer=optimizer,
         loss=loss,
         metrics=["accuracy"],
     )
 
-    # Train
     model.fit(
-        train_ds,
+        x=train_ds,
         epochs=epoch,
         verbose=1,
     )

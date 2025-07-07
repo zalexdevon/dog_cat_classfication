@@ -1,6 +1,5 @@
 import pandas as pd
 from src.layers import *
-from src.layer_lists import *
 from tensorflow.keras.layers import (
     Flatten,
     GlobalAveragePooling2D,
@@ -14,7 +13,6 @@ from tensorflow.keras.optimizers import (
 
 
 def create_object(param, layer_text):
-    # Get param ứng với layer_text
     keys = pd.Series(param.keys())
     values = pd.Series(param.values())
 
@@ -25,11 +23,9 @@ def create_object(param, layer_text):
     keys = keys.apply(get_param_name)
     layer_param = dict(zip(keys, values))
 
-    # Tạo class
     class_name = layer_param.pop("name")
     ClassName = globals()[class_name]
 
-    # Tạo object
     layer = ClassName(**layer_param)
     return layer
 

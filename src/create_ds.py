@@ -1,6 +1,5 @@
 from tensorflow.keras.preprocessing import image_dataset_from_directory
-from Mylib.tf_myfuncs import cache_prefetch_tfdataset
-import cv2
+from Mylib import tf_myfuncs
 
 
 def create_train_val_ds(param, train_val_path, class_names):
@@ -26,6 +25,6 @@ def create_ds(param, ds_path, class_names):
         class_names=class_names,
     )
 
-    ds = cache_prefetch_tfdataset(ds)
+    ds = tf_myfuncs.cache_prefetch_tfdataset(ds)
 
     return ds

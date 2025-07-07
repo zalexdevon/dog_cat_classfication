@@ -27,7 +27,6 @@ class DenseLayer(layers.Layer):
         super().build(input_shape)
 
     def call(self, x):
-        # Xử lí x
         x = self.Dense(x)
         x = self.BatchNormalization(x)
         x = self.Activation(x)
@@ -37,7 +36,6 @@ class DenseLayer(layers.Layer):
 
     @classmethod
     def from_config(cls, config):
-        # Giải mã lại lớp từ cấu hình
         return cls(**config)
 
 
@@ -56,13 +54,11 @@ class PassThroughLayer(layers.Layer):
         return x
 
     def get_config(self):
-        # Trả về cấu hình của lớp tùy chỉnh
         config = super().get_config()
         return config
 
     @classmethod
     def from_config(cls, config):
-        # Giải mã lại lớp từ cấu hình
         return cls(**config)
 
 
@@ -155,12 +151,48 @@ class ImageDataAugmentation(layers.Layer):
         return cls(**config)
 
 
+class ImageDataAugmentation1(layers.Layer):
+    def __init__(self, rotation_factor, zoom_factor, **kwargs):
+        super().__init__(**kwargs)
+        self.rotation_factor = rotation_factor
+        self.zoom_factor = zoom_factor
+
+    def get_config(self):
+        # Trả về cấu hình của lớp tùy chỉnh
+        config = super().get_config()
+        config.update(
+            {
+                "rotation_factor": self.rotation_factor,
+                "zoom_factor": self.zoom_factor,
+            }
+        )
+        return config
+
+    def build(self, input_shape):
+        self.RandomFlip = layers.RandomFlip(mode="horizontal_and_vertical")
+        self.RandomRotation = layers.RandomRotation(factor=self.rotation_factor)
+        self.RandomZoom = layers.RandomZoom(height_factor=self.zoom_factor)
+
+        super().build(input_shape)
+
+    def call(self, x):
+        x = self.RandomFlip(x)
+        x = self.RandomRotation(x)
+        x = self.RandomZoom(x)
+
+        return x
+
+    @classmethod
+    def from_config(cls, config):
+        # Giải mã lại lớp từ cấu hình
+        return cls(**config)
+
+
 class SeparableConv2DBlock(layers.Layer):
-    def __init__(self, filters, num_conv_block, name=None, **kwargs):
+    def __init__(self, filters, name=None, **kwargs):
         # super(ConvNetBlock_XceptionVersion, self).__init__()
         super().__init__(name=name, **kwargs)
         self.filters = filters
-        self.num_conv_block = num_conv_block
 
     def get_config(self):
         # Trả về cấu hình của lớp tùy chỉnh
@@ -168,25 +200,28 @@ class SeparableConv2DBlock(layers.Layer):
         config.update(
             {
                 "filters": self.filters,
-                "num_conv_block": self.num_conv_block,
             }
         )
         return config
 
     def build(self, input_shape):
-        self.conv_blocks = [
-            {
-                "bn": layers.BatchNormalization(),
-                "a": layers.Activation("relu"),
-                "conv": layers.SeparableConv2D(
-                    filters=self.filters,
-                    kernel_size=3,
-                    padding="same",
-                    use_bias=False,
-                ),
-            }
-            for _ in range(self.num_conv_block)
-        ]
+        self.BatchNormalization1 = layers.BatchNormalization()
+        self.Activation1 = layers.Activation("relu")
+        self.SeparableConv2D1 = layers.SeparableConv2D(
+            filters=self.filters,
+            kernel_size=3,
+            padding="same",
+            use_bias=False,
+        )
+
+        self.BatchNormalization2 = layers.BatchNormalization()
+        self.Activation2 = layers.Activation("relu")
+        self.SeparableConv2D2 = layers.SeparableConv2D(
+            filters=self.filters,
+            kernel_size=3,
+            padding="same",
+            use_bias=False,
+        )
 
         self.MaxPooling2D = layers.MaxPooling2D(pool_size=2, strides=2, padding="same")
 
@@ -203,14 +238,14 @@ class SeparableConv2DBlock(layers.Layer):
     def call(self, x):
         residual = x
 
-        for conv_block in self.conv_blocks:
-            x = conv_block["bn"](x)
-            x = conv_block["a"](x)
-            x = conv_block["conv"](x)
-
+        x = self.BatchNormalization1(x)
+        x = self.Activation1(x)
+        x = self.SeparableConv2D1(x)
+        x = self.BatchNormalization2(x)
+        x = self.Activation2(x)
+        x = self.SeparableConv2D2(x)
         x = self.MaxPooling2D(x)
 
-        # Apply residual connection
         residual = self.Conv2DForResidual(residual)
         x = layers.add([x, residual])
 
@@ -223,10 +258,9 @@ class SeparableConv2DBlock(layers.Layer):
 
 
 class Conv2DBlock(layers.Layer):
-    def __init__(self, filters, num_conv_block, **kwargs):
+    def __init__(self, filters, **kwargs):
         super().__init__(**kwargs)
         self.filters = filters
-        self.num_conv_block = num_conv_block
 
     def get_config(self):
         # Trả về cấu hình của lớp tùy chỉnh
@@ -234,25 +268,28 @@ class Conv2DBlock(layers.Layer):
         config.update(
             {
                 "filters": self.filters,
-                "num_conv_block": self.num_conv_block,
             }
         )
         return config
 
     def build(self, input_shape):
-        self.conv_blocks = [
-            {
-                "bn": layers.BatchNormalization(),
-                "a": layers.Activation("relu"),
-                "conv": layers.Conv2D(
-                    filters=self.filters,
-                    kernel_size=3,
-                    padding="same",
-                    use_bias=False,
-                ),
-            }
-            for _ in range(self.num_conv_block)
-        ]
+        self.BatchNormalization1 = layers.BatchNormalization()
+        self.Activation1 = layers.Activation("relu")
+        self.Conv2D1 = layers.Conv2D(
+            filters=self.filters,
+            kernel_size=3,
+            padding="same",
+            use_bias=False,
+        )
+
+        self.BatchNormalization2 = layers.BatchNormalization()
+        self.Activation2 = layers.Activation("relu")
+        self.Conv2D2 = layers.Conv2D(
+            filters=self.filters,
+            kernel_size=3,
+            padding="same",
+            use_bias=False,
+        )
 
         self.MaxPooling2D = layers.MaxPooling2D(
             pool_size=2,
@@ -273,17 +310,15 @@ class Conv2DBlock(layers.Layer):
     def call(self, x):
         residual = x
 
-        for conv_block in self.conv_blocks:
-            x = conv_block["bn"](x)
-            x = conv_block["a"](x)
-            x = conv_block["conv"](x)
-
+        x = self.BatchNormalization1(x)
+        x = self.Activation1(x)
+        x = self.Conv2D1(x)
+        x = self.BatchNormalization2(x)
+        x = self.Activation2(x)
+        x = self.Conv2D2(x)
         x = self.MaxPooling2D(x)
 
-        # Xử lí residual
         residual = self.Conv2DForResidual(residual)
-
-        # Apply residual connection
         x = layers.add([x, residual])
 
         return x
@@ -330,11 +365,106 @@ class Conv2DBlockNoMaxPooling(layers.Layer):
         x = self.activation(x)
         x = self.conv2d(x)
 
-        # Xử lí residual
         residual = self.Conv2DForResidual(residual)
-
-        # Apply residual connection
         x = layers.add([x, residual])
+
+        return x
+
+    @classmethod
+    def from_config(cls, config):
+        # Giải mã lại lớp từ cấu hình
+        return cls(**config)
+
+
+class DenseLayerList(layers.Layer):
+    def __init__(self, dropout_rate, list_units, do_have_last_layer, **kwargs):
+        super().__init__(**kwargs)
+        self.dropout_rate = dropout_rate
+        self.list_units = list_units
+        self.do_have_last_layer = do_have_last_layer
+
+    def get_config(self):
+        # Trả về cấu hình của lớp tùy chỉnh
+        config = super().get_config()
+        config.update(
+            {
+                "dropout_rate": self.dropout_rate,
+                "list_units": self.list_units,
+                "do_have_last_layer": self.do_have_last_layer,
+            }
+        )
+        return config
+
+    def build(self, input_shape):
+        self.DenseLayers = [
+            DenseLayer(units=units, dropout_rate=self.dropout_rate)
+            for units in self.list_units
+        ]
+        self.lastDenseLayer = (
+            DenseLayer(units=self.list_units[-1], dropout_rate=0)
+            if self.do_have_last_layer
+            else PassThroughLayer()
+        )
+
+        super().build(input_shape)
+
+    def call(self, x):
+        # Xử lí x
+        for layer in self.DenseLayers:
+            x = layer(x)
+
+        x = self.lastDenseLayer(x)
+
+        return x
+
+    @classmethod
+    def from_config(cls, config):
+        # Giải mã lại lớp từ cấu hình
+        return cls(**config)
+
+
+class Conv2DBlockList(layers.Layer):
+    def __init__(self, list_filters, layer_name, do_have_last_layer, **kwargs):
+        super().__init__(**kwargs)
+        self.list_filters = list_filters
+        self.layer_name = layer_name
+        self.do_have_last_layer = do_have_last_layer
+
+    def get_config(self):
+        # Trả về cấu hình của lớp tùy chỉnh
+        config = super().get_config()
+        config.update(
+            {
+                "list_filters": self.list_filters,
+                "layer_name": self.layer_name,
+                "do_have_last_layer": self.do_have_last_layer,
+            }
+        )
+        return config
+
+    def build(self, input_shape):
+        ConvName = globals()[self.layer_name]
+
+        self.Conv2DBlocks = [
+            ConvName(
+                filters=filters,
+            )
+            for filters in self.list_filters
+        ]
+
+        self.lastConv2DBlock = (
+            Conv2DBlockNoMaxPooling(filters=self.list_filters[-1])
+            if self.do_have_last_layer
+            else PassThroughLayer()
+        )
+
+        super().build(input_shape)
+
+    def call(self, x):
+        for layer in self.Conv2DBlocks:
+            x = layer(x)
+
+        x = self.lastConv2DBlock(x)
 
         return x
 

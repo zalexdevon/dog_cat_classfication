@@ -9,15 +9,13 @@ import numpy as np
 
 
 def evaluate(model, class_names, val_ds, model_evaluation_on_val_path):
-    # Đánh giá model trên tập val
     result_text, val_confusion_matrix = tf_model_evaluator_classes.ClassifierEvaluator(
         model=model,
         class_names=class_names,
         train_ds=val_ds,
     ).evaluate()
-    model_result_text += result_text  # Thêm đoạn đánh giá vào
+    model_result_text += result_text
 
-    # Lưu lại confusion matrix cho tập val
     val_confusion_matrix_path = Path(
         f"{model_evaluation_on_val_path}/confusion_matrix.png"
     )
@@ -25,7 +23,6 @@ def evaluate(model, class_names, val_ds, model_evaluation_on_val_path):
         val_confusion_matrix_path, dpi=None, bbox_inches="tight", format=None
     )
 
-    # Lưu vào file results.txt
     with open(Path(f"{model_evaluation_on_val_path}/result.txt"), mode="w") as file:
         file.write(model_result_text)
 
@@ -37,10 +34,8 @@ def evaluate_on_test_ds(model, class_names, val_ds):
     test_pred = [int(item) for item in test_pred]
     test_target_data = [int(item) for item in test_target_data]
 
-    # Accuracy
     test_accuracy = metrics.accuracy_score(test_target_data, test_pred)
 
-    # Classification report
     class_names = np.asarray(class_names)
     named_test_target_data = class_names[test_target_data]
     named_test_pred = class_names[test_pred]
@@ -49,7 +44,6 @@ def evaluate_on_test_ds(model, class_names, val_ds):
         named_test_target_data, named_test_pred
     )
 
-    # Confusion matrix
     test_confusion_matrix = metrics.confusion_matrix(
         named_test_target_data, named_test_pred, labels=class_names
     )
@@ -70,15 +64,11 @@ def get_full_target_and_pred_for_softmax_model(model, ds):
     y_true = []
     y_pred = []
 
-    # Lặp qua các batch trong train_ds
     for feature, true_data in ds:
-        # Dự đoán bằng mô hình
         predictions = model.predict(feature, verbose=0)
 
-        y_pred_batch = np.argmax(
-            predictions, axis=-1
-        ).tolist()  # Convert về giống dạng của y_true_batch
-        y_true_batch = true_data.numpy().tolist()  # Convert về list
+        y_pred_batch = np.argmax(predictions, axis=-1).tolist()
+        y_true_batch = true_data.numpy().tolist()
         y_true += y_true_batch
         y_pred += y_pred_batch
 

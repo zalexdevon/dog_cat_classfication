@@ -85,6 +85,7 @@ def train_model(
         train_ds, val_ds = create_ds.create_train_val_ds(
             param, train_val_path, class_names
         )
+        start_do_something_before_epoch1 = time.time()
 
         callbacks = create_callbacks(patience, min_delta)
 
@@ -168,11 +169,14 @@ def get_folder_name(model_training_path):
 
 
 class BestEpochResultSearcher(tf.keras.callbacks.Callback):
-    def __init__(self):
+    def __init__(self, start_do_something_before_epoch1):
         super().__init__()
+        self.start_do_something_before_epoch1 = start_do_something_before_epoch1
 
     def on_train_begin(self, logs=None):
         self.start_time = time.time()
+
+        print(f"Th")
         self.train_scorings = []
         self.val_scorings = []
 

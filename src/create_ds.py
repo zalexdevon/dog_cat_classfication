@@ -25,6 +25,6 @@ def create_ds(param, ds_path, class_names):
         class_names=class_names,
     )
 
-    ds = tf_myfuncs.cache_prefetch_tfdataset(ds)
+    ds = tf_myfuncs.cache_prefetch_tfdataset_no_shuffle(ds)
 
     return ds

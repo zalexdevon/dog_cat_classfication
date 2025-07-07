@@ -114,6 +114,7 @@ def train_model(
         print(
             f"Val scoring: {val_scoring}, Train scoring: {train_scoring}, Best epoch: {best_epoch}, training time: {training_time} (mins)"
         )
+        print("\n")
 
         best_val_scoring = myfuncs.load_python_object(best_val_scoring_path)
         if best_val_scoring < val_scoring:

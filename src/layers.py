@@ -396,14 +396,11 @@ class DenseLayerList(layers.Layer):
         return config
 
     def build(self, input_shape):
-        self.DenseLayers = (
-            [
-                DenseLayer(units=units, dropout_rate=self.dropout_rate)
-                for units in self.list_units
-            ]
-            if self.list_units is not None
-            else PassThroughLayer()
-        )
+        self.DenseLayers = [
+            DenseLayer(units=units, dropout_rate=self.dropout_rate)
+            for units in self.list_units
+        ]
+
         self.lastDenseLayer = (
             DenseLayer(units=self.list_units[-1], dropout_rate=0)
             if self.do_have_last_layer
@@ -418,6 +415,76 @@ class DenseLayerList(layers.Layer):
             x = layer(x)
 
         x = self.lastDenseLayer(x)
+
+        return x
+
+    @classmethod
+    def from_config(cls, config):
+        # Giải mã lại lớp từ cấu hình
+        return cls(**config)
+
+
+class DenseLayerList1(layers.Layer):
+    def __init__(
+        self,
+        type,
+        list_list_units,
+        list_dropout_rate,
+        list_do_have_last_layer,
+        single_units,
+        single_dropout_rate,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.type = type
+        self.list_list_units = list_list_units
+        self.list_dropout_rate = list_dropout_rate
+        self.list_do_have_last_layer = list_do_have_last_layer
+        self.single_units = single_units
+        self.single_dropout_rate = single_dropout_rate
+
+    def get_config(self):
+        # Trả về cấu hình của lớp tùy chỉnh
+        config = super().get_config()
+        config.update(
+            {
+                "type": self.type,
+                "list_list_units": self.list_list_units,
+                "list_dropout_rate": self.list_dropout_rate,
+                "list_do_have_last_layer": self.list_do_have_last_layer,
+                "single_units": self.single_units,
+                "single_dropout_rate": self.single_dropout_rate,
+            }
+        )
+        return config
+
+    def build(self, input_shape):
+        if self.type == "list":
+            self.DenseLayers = [
+                DenseLayer(units=units, dropout_rate=self.list_dropout_rate)
+                for units in self.list_list_units
+            ]
+
+            self.lastDenseLayer = (
+                DenseLayer(units=self.list_list_units[-1], dropout_rate=0)
+                if self.list_do_have_last_layer
+                else PassThroughLayer()
+            )
+        elif self.type == "single":
+            self.DenseLayer = DenseLayer(
+                units=self.single_units, dropout_rate=self.single_dropout_rate
+            )
+
+        super().build(input_shape)
+
+    def call(self, x):
+        if self.type == "list":
+            for layer in self.DenseLayers:
+                x = layer(x)
+
+            x = self.lastDenseLayer(x)
+        elif self.type == "single":
+            x = self.DenseLayer(x)
 
         return x
 

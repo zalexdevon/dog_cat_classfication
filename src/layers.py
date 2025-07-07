@@ -396,10 +396,14 @@ class DenseLayerList(layers.Layer):
         return config
 
     def build(self, input_shape):
-        self.DenseLayers = [
-            DenseLayer(units=units, dropout_rate=self.dropout_rate)
-            for units in self.list_units
-        ]
+        self.DenseLayers = (
+            [
+                DenseLayer(units=units, dropout_rate=self.dropout_rate)
+                for units in self.list_units
+            ]
+            if self.list_units is not None
+            else PassThroughLayer()
+        )
         self.lastDenseLayer = (
             DenseLayer(units=self.list_units[-1], dropout_rate=0)
             if self.do_have_last_layer

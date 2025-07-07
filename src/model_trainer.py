@@ -66,7 +66,7 @@ def train(
     print("Model tốt nhất")
     print(f"Param: {best_model_result[0]}")
     print(
-        f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}"
+        f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}, training time: {best_model_result[4]}"
     )
 
 
@@ -91,6 +91,9 @@ def train_model(
         optimizer = create_object.create_object(param, "optimizer")
 
         model = create_model.create_model(param)
+        print("model summary")
+        model.summary()
+        print()
 
         model.compile(
             optimizer=optimizer,
@@ -107,6 +110,7 @@ def train_model(
         ).history
 
         val_scoring, train_scoring, best_epoch, training_time = callbacks[1].best_result
+        print("Kết quả train model")
         print(
             f"Val scoring: {val_scoring}, Train scoring: {train_scoring}, Best epoch: {best_epoch}, training time: {training_time} (mins)"
         )

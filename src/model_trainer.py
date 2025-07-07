@@ -87,7 +87,9 @@ def train_model(
         )
         start_do_something_before_epoch1 = time.time()
 
-        callbacks = create_callbacks(patience, min_delta)
+        callbacks = create_callbacks(
+            patience, min_delta, start_do_something_before_epoch1
+        )
 
         optimizer = create_object.create_object(param, "optimizer")
 
@@ -130,14 +132,14 @@ def train_model(
         traceback.print_exc()
 
 
-def create_callbacks(patience, min_delta):
+def create_callbacks(patience, min_delta, start_do_something_before_epoch1):
     earlystopping = EarlyStopping(
         monitor=f"val_accuracy",
         patience=patience,
         min_delta=min_delta,
         mode="max",
     )
-    model_checkpoint = BestEpochResultSearcher()
+    model_checkpoint = BestEpochResultSearcher(start_do_something_before_epoch1)
 
     return [earlystopping, model_checkpoint]
 
@@ -176,7 +178,12 @@ class BestEpochResultSearcher(tf.keras.callbacks.Callback):
     def on_train_begin(self, logs=None):
         self.start_time = time.time()
 
-        print(f"Th")
+        amount_time_for_do_something_before_epoch1 = (
+            self.start_time - self.start_do_something_before_epoch1
+        )
+        print(
+            f"Thời gian chờ trước khi vào epoch 1 = {amount_time_for_do_something_before_epoch1} (s)"
+        )
         self.train_scorings = []
         self.val_scorings = []
 

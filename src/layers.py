@@ -1,5 +1,6 @@
 from tensorflow.keras import layers
 import keras_cv
+import tensorflow as tf
 
 
 class DenseLayer(layers.Layer):
@@ -26,6 +27,7 @@ class DenseLayer(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         x = self.Dense(x)
         x = self.BatchNormalization(x)
@@ -477,6 +479,7 @@ class DenseLayerList1(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         if self.type == "list":
             for layer in self.DenseLayers:

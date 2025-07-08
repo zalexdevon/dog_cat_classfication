@@ -5,13 +5,13 @@ from Mylib import (
 import tensorflow as tf
 import numpy as np
 from pathlib import Path
-from multiprocessing import Process, Queue
 import traceback
 from src import create_ds
 from src import create_model
 from src import create_object
 from tensorflow.keras.callbacks import EarlyStopping
 import time
+import pandas as pd
 
 
 def train(
@@ -45,22 +45,17 @@ def train(
     for i, param in enumerate(list_param):
         print(f"Train model {i} / {num_models}")
         print(f"Param: {param}")
-        p = Process(
-            target=train_model,
-            args=(
-                param,
-                best_result_path,
-                best_val_scoring_path,
-                loss,
-                patience,
-                min_delta,
-                epochs,
-                train_val_path,
-                class_names,
-            ),
+        train_model(
+            param,
+            best_result_path,
+            best_val_scoring_path,
+            loss,
+            patience,
+            min_delta,
+            epochs,
+            train_val_path,
+            class_names,
         )
-        p.start()
-        p.join()
 
     best_model_result = myfuncs.load_python_object(best_result_path)
     print("Model tốt nhất")
@@ -147,7 +142,7 @@ def create_callbacks(patience, min_delta, start_do_something_before_epoch1):
 def get_list_param(param_dict, model_training_path, num_models):
     full_list_param = myfuncs.get_full_list_dict(param_dict)
 
-    run_folders = os.listdir(model_training_path)
+    run_folders = pd.Series(os.listdir(model_training_path))
 
     if len(run_folders) > 0:
         for run_folder in run_folders:

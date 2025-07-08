@@ -378,10 +378,13 @@ def train_model_testCPUandGPUusage(
     class_names,
 ):
     try:
+        tf.debugging.set_log_device_placement(True)
 
-        train_ds, val_ds = create_ds.create_train_val_ds(
-            param, train_val_path, class_names
-        )
+        with tf.device("/CPU:0"):
+            train_ds, val_ds = create_ds.create_train_val_ds(
+                param, train_val_path, class_names
+            )
+
         start_do_something_before_epoch1 = time.time()
 
         callbacks = create_callbacks(

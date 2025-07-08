@@ -200,3 +200,116 @@ class BestEpochResultSearcher(tf.keras.callbacks.Callback):
             best_epoch,
             training_time,
         )
+
+
+def train_demoTfFunction(
+    param_dict,
+    model_training_path,
+    num_models,
+    train_val_path,
+    loss,
+    patience,
+    min_delta,
+    epochs,
+    class_names,
+):
+    list_param = get_list_param(param_dict, model_training_path, num_models)
+
+    model_training_run_path = Path(
+        f"{model_training_path}/{get_folder_name(model_training_path)}"
+    )
+    myfuncs.create_directories([model_training_run_path])
+
+    myfuncs.save_python_object(
+        Path(f"{model_training_run_path}/list_param.pkl"), list_param
+    )
+
+    best_val_scoring_path = Path(f"{model_training_run_path}/best_val_scoring.pkl")
+    myfuncs.save_python_object(best_val_scoring_path, -np.inf)
+
+    best_result_path = Path(f"{model_training_run_path}/best_result.pkl")
+    myfuncs.save_python_object(best_result_path, -np.inf)
+
+    for i, param in enumerate(list_param):
+        print(f"Train model {i} / {num_models}")
+        print(f"Param: {param}")
+        train_model_demoTfFunction(
+            param,
+            best_result_path,
+            best_val_scoring_path,
+            loss,
+            patience,
+            min_delta,
+            epochs,
+            train_val_path,
+            class_names,
+        )
+
+    best_model_result = myfuncs.load_python_object(best_result_path)
+    print("Model tốt nhất")
+    print(f"Param: {best_model_result[0]}")
+    print(
+        f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}, training time: {best_model_result[4]}"
+    )
+
+
+def train_model_demoTfFunction(
+    param,
+    best_model_result_path,
+    best_val_scoring_path,
+    loss,
+    patience,
+    min_delta,
+    epochs,
+    train_val_path,
+    class_names,
+):
+    try:
+        train_ds, val_ds = create_ds.create_train_val_ds(
+            param, train_val_path, class_names
+        )
+        start_do_something_before_epoch1 = time.time()
+
+        callbacks = create_callbacks(
+            patience, min_delta, start_do_something_before_epoch1
+        )
+
+        optimizer = create_object.create_object(param, "optimizer")
+
+        model = create_model.create_model_demoTfFunction(param)
+        print("model summary")
+        model.summary()
+        print()
+
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=["accuracy"],
+        )
+
+        history = model.fit(
+            x=train_ds,
+            epochs=epochs,
+            verbose=1,
+            validation_data=val_ds,
+            callbacks=callbacks,
+        ).history
+
+        val_scoring, train_scoring, best_epoch, training_time = callbacks[1].best_result
+        print("Kết quả train model")
+        print(
+            f"Val scoring: {val_scoring}, Train scoring: {train_scoring}, Best epoch: {best_epoch}, training time: {training_time} (mins)"
+        )
+        print("\n")
+
+        best_val_scoring = myfuncs.load_python_object(best_val_scoring_path)
+        if best_val_scoring < val_scoring:
+            myfuncs.save_python_object(best_val_scoring_path, val_scoring)
+            myfuncs.save_python_object(
+                best_model_result_path,
+                (param, val_scoring, train_scoring, best_epoch, training_time, history),
+            )
+
+    except Exception as e:
+        print(f"Lỗi: {e}")
+        traceback.print_exc()

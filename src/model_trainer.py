@@ -378,6 +378,7 @@ def train_model_testCPUandGPUusage(
     class_names,
 ):
     try:
+        print("Bật log set_log_device_placement")
         tf.debugging.set_log_device_placement(True)
 
         with tf.device("/CPU:0"):

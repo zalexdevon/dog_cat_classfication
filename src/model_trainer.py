@@ -155,7 +155,7 @@ def get_list_param(param_dict, model_training_path, num_models):
 
 
 def get_folder_name(model_training_path):
-    run_folders = os.listdir(model_training_path)
+    run_folders = pd.Series(os.listdir(model_training_path))
 
     if len(run_folders) == 0:
         return "run0"

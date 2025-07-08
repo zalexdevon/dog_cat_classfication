@@ -27,7 +27,6 @@ class DenseLayer(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         x = self.Dense(x)
         x = self.BatchNormalization(x)

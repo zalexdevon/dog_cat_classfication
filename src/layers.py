@@ -27,6 +27,7 @@ class DenseLayer(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         x = self.Dense(x)
         x = self.BatchNormalization(x)
@@ -50,6 +51,7 @@ class PassThroughLayer(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
 
         return x
@@ -133,6 +135,7 @@ class ImageDataAugmentation(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         # Xử lí x
         x = self.RandomFlip(x)
@@ -176,6 +179,7 @@ class ImageDataAugmentation1(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         x = self.RandomFlip(x)
         x = self.RandomRotation(x)
@@ -236,6 +240,7 @@ class SeparableConv2DBlock(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         residual = x
 
@@ -308,6 +313,7 @@ class Conv2DBlock(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         residual = x
 
@@ -359,6 +365,7 @@ class Conv2DBlockNoMaxPooling(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         residual = x
 
@@ -410,6 +417,7 @@ class DenseLayerList(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         # Xử lí x
         for layer in self.DenseLayers:
@@ -533,6 +541,7 @@ class Conv2DBlockList(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, x):
         for layer in self.Conv2DBlocks:
             x = layer(x)

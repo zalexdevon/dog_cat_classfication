@@ -431,3 +431,55 @@ def train_model_testCPUandGPUusage(
     except Exception as e:
         print(f"Lỗi: {e}")
         traceback.print_exc()
+
+
+def train_customized_train_function(
+    param_dict,
+    model_training_path,
+    num_models,
+    train_val_path,
+    loss,
+    patience,
+    min_delta,
+    epochs,
+    class_names,
+    train_model_function,
+):
+    list_param = get_list_param(param_dict, model_training_path, num_models)
+
+    model_training_run_path = Path(
+        f"{model_training_path}/{get_folder_name(model_training_path)}"
+    )
+    myfuncs.create_directories([model_training_run_path])
+
+    myfuncs.save_python_object(
+        Path(f"{model_training_run_path}/list_param.pkl"), list_param
+    )
+
+    best_val_scoring_path = Path(f"{model_training_run_path}/best_val_scoring.pkl")
+    myfuncs.save_python_object(best_val_scoring_path, -np.inf)
+
+    best_result_path = Path(f"{model_training_run_path}/best_result.pkl")
+    myfuncs.save_python_object(best_result_path, -np.inf)
+
+    for i, param in enumerate(list_param):
+        print(f"Train model {i} / {num_models}")
+        print(f"Param: {param}")
+        train_model_function(
+            param,
+            best_result_path,
+            best_val_scoring_path,
+            loss,
+            patience,
+            min_delta,
+            epochs,
+            train_val_path,
+            class_names,
+        )
+
+    best_model_result = myfuncs.load_python_object(best_result_path)
+    print("Model tốt nhất")
+    print(f"Param: {best_model_result[0]}")
+    print(
+        f"Val scoring: {best_model_result[1]}, Train scoring: {best_model_result[2]}, Best epoch: {best_model_result[3]}, training time: {best_model_result[4]}"
+    )

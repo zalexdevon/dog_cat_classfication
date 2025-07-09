@@ -77,7 +77,7 @@ def train_model(
     class_names,
 ):
     try:
-        print("")
+        print("Thực hiện train_model")
         train_ds, val_ds = create_ds.create_train_val_ds(
             param, train_val_path, class_names
         )

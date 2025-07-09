@@ -27,7 +27,6 @@ class DenseLayer(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         x = self.Dense(x)
         x = self.BatchNormalization(x)
@@ -51,7 +50,6 @@ class PassThroughLayer(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
 
         return x
@@ -135,7 +133,6 @@ class ImageDataAugmentation(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         # Xử lí x
         x = self.RandomFlip(x)
@@ -179,7 +176,6 @@ class ImageDataAugmentation1(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         x = self.RandomFlip(x)
         x = self.RandomRotation(x)
@@ -240,7 +236,6 @@ class SeparableConv2DBlock(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         residual = x
 
@@ -313,7 +308,6 @@ class Conv2DBlock(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         residual = x
 
@@ -365,7 +359,6 @@ class Conv2DBlockNoMaxPooling(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         residual = x
 
@@ -417,7 +410,6 @@ class DenseLayerList(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         # Xử lí x
         for layer in self.DenseLayers:
@@ -486,7 +478,6 @@ class DenseLayerList1(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
     def call(self, x):
         if self.type == "list":
             for layer in self.DenseLayers:
@@ -541,7 +532,49 @@ class Conv2DBlockList(layers.Layer):
 
         super().build(input_shape)
 
-    @tf.function
+    def call(self, x):
+        for layer in self.Conv2DBlocks:
+            x = layer(x)
+
+        x = self.lastConv2DBlock(x)
+
+        return x
+
+    @classmethod
+    def from_config(cls, config):
+        # Giải mã lại lớp từ cấu hình
+        return cls(**config)
+
+
+class PretrainedModel(layers.Layer):
+    def __init__(self, model_name, **kwargs):
+        super().__init__(**kwargs)
+        self.model_name = model_name
+
+    def get_config(self):
+        # Trả về cấu hình của lớp tùy chỉnh
+        config = super().get_config()
+        config.update({"model_name": self.model_name})
+        return config
+
+    def build(self, input_shape):
+        ConvName = globals()[self.layer_name]
+
+        self.Conv2DBlocks = [
+            ConvName(
+                filters=filters,
+            )
+            for filters in self.list_filters
+        ]
+
+        self.lastConv2DBlock = (
+            Conv2DBlockNoMaxPooling(filters=self.list_filters[-1])
+            if self.do_have_last_layer
+            else PassThroughLayer()
+        )
+
+        super().build(input_shape)
+
     def call(self, x):
         for layer in self.Conv2DBlocks:
             x = layer(x)

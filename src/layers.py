@@ -1,6 +1,7 @@
 from tensorflow.keras import layers
 import keras_cv
 import tensorflow as tf
+from src import get_conv_block_and_preprocess_input_from_pretrained_model
 
 
 class DenseLayer(layers.Layer):
@@ -558,28 +559,18 @@ class PretrainedModel(layers.Layer):
         return config
 
     def build(self, input_shape):
-        ConvName = globals()[self.layer_name]
-
-        self.Conv2DBlocks = [
-            ConvName(
-                filters=filters,
+        self.conv_block, self.preprocess_input = (
+            get_conv_block_and_preprocess_input_from_pretrained_model.get_conv_block_and_preprocess_input_from_pretrained_model(
+                self.model_name
             )
-            for filters in self.list_filters
-        ]
-
-        self.lastConv2DBlock = (
-            Conv2DBlockNoMaxPooling(filters=self.list_filters[-1])
-            if self.do_have_last_layer
-            else PassThroughLayer()
         )
 
         super().build(input_shape)
 
     def call(self, x):
-        for layer in self.Conv2DBlocks:
+        x = self.preprocess_input(x)
+        for layer in self.conv_block:
             x = layer(x)
-
-        x = self.lastConv2DBlock(x)
 
         return x
 

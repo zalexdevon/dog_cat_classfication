@@ -433,6 +433,73 @@ def train_model_testCPUandGPUusage(
         traceback.print_exc()
 
 
+def train_model_testCPUandGPUusage_notUsing(
+    param,
+    best_model_result_path,
+    best_val_scoring_path,
+    loss,
+    patience,
+    min_delta,
+    epochs,
+    train_val_path,
+    class_names,
+):
+    try:
+        print("train_model_testCPUandGPUusage_notUsing")
+        print("Bật log set_log_device_placement")
+        tf.debugging.set_log_device_placement(True)
+
+        train_ds, val_ds = create_ds.create_train_val_ds(
+            param, train_val_path, class_names
+        )
+
+        start_do_something_before_epoch1 = time.time()
+
+        callbacks = create_callbacks(
+            patience, min_delta, start_do_something_before_epoch1
+        )
+
+        optimizer = create_object.create_object(param, "optimizer")
+
+        model = create_model.create_model_demoTfFunction(param)
+        print("model summary")
+        model.summary()
+        print()
+
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=["accuracy"],
+        )
+
+        history = model.fit(
+            x=train_ds,
+            epochs=epochs,
+            verbose=1,
+            validation_data=val_ds,
+            callbacks=callbacks,
+        ).history
+
+        val_scoring, train_scoring, best_epoch, training_time = callbacks[1].best_result
+        print("Kết quả train model")
+        print(
+            f"Val scoring: {val_scoring}, Train scoring: {train_scoring}, Best epoch: {best_epoch}, training time: {training_time} (mins)"
+        )
+        print("\n")
+
+        best_val_scoring = myfuncs.load_python_object(best_val_scoring_path)
+        if best_val_scoring < val_scoring:
+            myfuncs.save_python_object(best_val_scoring_path, val_scoring)
+            myfuncs.save_python_object(
+                best_model_result_path,
+                (param, val_scoring, train_scoring, best_epoch, training_time, history),
+            )
+
+    except Exception as e:
+        print(f"Lỗi: {e}")
+        traceback.print_exc()
+
+
 def train_customized_train_function(
     param_dict,
     model_training_path,
